@@ -16,10 +16,14 @@ from bs4 import BeautifulSoup
 from modules import download_script
 from modules.download_script import Chapter, CustomException
 
+current_anime_page = 1
+current_ch_page = 1
 search_text = ""
+chosen_anime = ""
 search_query = []
 chapters = []
 client = requests.Session()
+
 
 class Ui_Download_Dialog(QDialog):
 
@@ -134,57 +138,78 @@ class Ui_Download_Dialog(QDialog):
         self.p_page_chapter.setText(_translate("Download_Dialog", "Prev. page"))
         self.n_page_chapter.setText(_translate("Download_Dialog", "Next page"))
 
-    def set_list_model(self, list, listView, prev_web, prev_btn, next_web, next_btn):
+    def change_page(self, listType, direction):
+        global search_query, chapters, current_anime_page, current_ch_page
+        if listType == 'anime':
+            url = f"http://nensaysubs.net/buscador/?query={search_text.replace(' ', '+')}&pn={current_anime_page}"
+            with client.post(url) as response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                if direction == 'next':
+                    current_anime_page += 1
+                    new_page = soup.find(name='a', text='Siguiente').get('href')
+                elif direction == 'previous':
+                    current_anime_page -= 1
+                    new_page = soup.find(name='a', text='Anterior').get('href')
+            with client.get(new_page) as response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                previous = soup.find(name='a', text='Anterior')
+                nxt = soup.find(name='a', text='Siguiente')
+                download_script.prev_anime = True if previous is not None else False
+                download_script.next_anime = True if nxt is not None else False
+                search_query = download_script.reload_filter(soup)
+                self.__set_list_model('anime')
+        else:
+            url = f"http://nensaysubs.net/sub/{chosen_anime.replace(' ', '_')}&pn={current_ch_page}"
+            with client.post(url) as response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                if direction == 'next':
+                    current_ch_page += 1
+                    new_page = soup.find(name='a', text='Siguiente').get('href')
+                elif direction == 'previous':
+                    current_ch_page -= 1
+                    new_page = soup.find(name='a', text='Anterior').get('href')
+            with client.get(new_page) as response:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                previous = soup.find(name='a', text='Anterior')
+                nxt = soup.find(name='a', text='Siguiente')
+                download_script.prev_chapter = True if previous is not None else False
+                download_script.next_chapter = True if nxt is not None else False
+                chapters = download_script.reload_chapters(soup)
+                self.__set_list_model('chapters')
+
+    def __set_list_model(self, listType):
+        if listType == 'anime':
+            list = search_query
+            listView = self.query_list
+            prev_btn = self.p_page_anime
+            next_btn = self.n_page_anime
+            prev_flag = download_script.prev_anime
+            next_flag = download_script.next_anime
+        else:
+            list = chapters
+            listView = self.chapter_list
+            prev_btn = self.p_page_chapter
+            next_btn = self.n_page_chapter
+            prev_flag = download_script.prev_chapter
+            next_flag = download_script.next_chapter
         model = QtGui.QStandardItemModel()
         for item in list:
             entry = QtGui.QStandardItem(item) if not isinstance(item, Chapter) else QtGui.QStandardItem(item.title)
             model.appendRow(entry)
         listView.setModel(model)
-        prev_btn.setEnabled(True) if prev_web else prev_btn.setDisabled(True)
-        next_btn.setEnabled(True) if next_web else next_btn.setDisabled(True)
-
-    # def next_anime_page(self, button):
-    #     global client
-    #     self.__change_page(client, self.p_page_anime, button, download_script.prev_anime, download_script.next_anime)
-    #
-    # def __change_page(self, session, button, button_to_go, script_prev_page, script_next_page):
-    #     with session.post(f"http://nensaysubs.net/buscador/?query={search_text.replace(' ', '+')}") as response:
-    #         # print(response.text)
-    #         soup = BeautifulSoup(response.text, 'html.parser')
-    #         previous = soup.find(name='a', text='Anterior')
-    #         nxt = soup.find(name='a', text='Siguiente')
-    #         script_prev_page = True if previous is not None else False
-    #         script_next_page = True if nxt is not None else False
-    #     print(button_to_go.text())
-    #     if button_to_go.text().__contains__('Next'):
-    #         search = session.get(nxt.get('href'))
-    #         soup = BeautifulSoup(search.text(), 'html.parser')
-    #         previous = soup.find(name='a', text='Anterior')
-    #         nxt = soup.find(name='a', text='Siguiente')
-    #         script_prev_page = True if previous is not None else False
-    #         script_next_page = True if nxt is not None else False
-    #         self.set_list_model(search, self.query_list, download_script.prev_anime, self.p_page_anime,
-    #                             download_script.next_anime, self.n_page_anime)
-    #     elif button_to_go.text().__contains__('Prev'):
-    #         search = session.get(previous.get('href'))
-    #         soup = BeautifulSoup(search.text(), 'html.parser')
-    #         previous = soup.find(name='a', text='Anterior')
-    #         nxt = soup.find(name='a', text='Siguiente')
-    #         script_prev_page = True if previous is not None else False
-    #         script_next_page = True if nxt is not None else False
-    #         self.set_list_model(search, self.query_list, script_prev_page, button_to_go, script_next_page, button_to_go)
+        prev_btn.setEnabled(True) if prev_flag else prev_btn.setDisabled(True)
+        next_btn.setEnabled(True) if next_flag else next_btn.setDisabled(True)
 
     def search_anime(self):
-        global search_text, search_query, client
-        #download_script.login(client)
+        global search_text, search_query, client, current_anime_page
+        current_anime_page = 1
         try:
             print("done")
             print(self.plainTextEdit.toPlainText())
             search_text = self.plainTextEdit.toPlainText()
             search_query = download_script.search(client, self.plainTextEdit.toPlainText())
             print(search_query)
-            self.set_list_model(search_query, self.query_list, download_script.prev_anime, self.p_page_anime,
-                                download_script.next_anime, self.n_page_anime)
+            self.__set_list_model('anime')
         except CustomException as e:
             message = QtWidgets.QMessageBox()
             message.setText(e.message)
@@ -194,15 +219,14 @@ class Ui_Download_Dialog(QDialog):
             message.exec_()
 
     def load_chapters(self):
-        global chapters
-        #print(str(self.query_list.currentIndex().row()))
+        global chapters, chosen_anime, current_ch_page
+        current_ch_page = 1
         index = int(self.query_list.currentIndex().row())
         print(index)
-        chosen = search_query[index]
-        print(chosen)
-        chapters = download_script.get_chapters(client, chosen)
-        self.set_list_model(chapters, self.chapter_list, download_script.prev_chapter, self.p_page_chapter,
-                            download_script.next_chapter, self.n_page_chapter)
+        chosen_anime = search_query[index]
+        print(chosen_anime)
+        chapters = download_script.get_chapters(client, chosen_anime)
+        self.__set_list_model('chapter')
         self.dl_btn.setEnabled(True)
 
     def download_sub(self):
@@ -220,11 +244,16 @@ class Ui_Download_Dialog(QDialog):
                     with open('photo.png', 'wb') as file:
                         file.write(chunk)
                     webbrowser.open('photo.png')
-                    code, _ = QtWidgets.QInputDialog.getText(self, 'Send code', 'Send opened picture code, if entered wrong zip will be corrupt')
+                    code, option = QtWidgets.QInputDialog.getText(self, 'Send code',
+                                                             'Send opened picture code, if entered wrong zip will be corrupt')
+                    if not option:
+                        os.remove('photo.png')
+                        return
                     print(code)
                     with client.post('http://nensaysubs.net/solicitud/', data={'code': code.lower()}) as dl:
                         chunk = dl.content
-                        save_path = QFileDialog.getExistingDirectory(parent=self, caption='Select where do you want to save the file')
+                        save_path = QFileDialog.getExistingDirectory(parent=self,
+                                                                     caption='Select where do you want to save the file')
                         print(save_path)
                         full_path = os.path.join(save_path, f'{zip_name}.zip')
                         full_path = os.path.abspath(full_path)
@@ -235,6 +264,8 @@ class Ui_Download_Dialog(QDialog):
                         message.setWindowTitle('Success')
                         message.setStandardButtons(QtWidgets.QMessageBox.Ok)
                         message.show()
+                    os.remove('photo.png')
+
         except:
             message = QtWidgets.QMessageBox()
             message.setText('Select a file to download')
@@ -242,7 +273,3 @@ class Ui_Download_Dialog(QDialog):
             message.setIcon(QtWidgets.QMessageBox.Critical)
             message.setStandardButtons(QtWidgets.QMessageBox.Ok)
             message.exec_()
-
-
-
-

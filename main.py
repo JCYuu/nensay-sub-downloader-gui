@@ -22,7 +22,10 @@ def dialogActions():
 	d_dialog.setupUi(d_dialog)
 	d_dialog.exit_btn.clicked.connect(d_dialog.accept)
 	d_dialog.search_btn.clicked.connect(d_dialog.search_anime)
-	#d_dialog.n_page_anime.clicked.connect(lambda: d_dialog.next_anime_page(d_dialog.n_page_anime))
+	d_dialog.n_page_anime.clicked.connect(lambda: d_dialog.change_page('anime', 'next'))
+	d_dialog.p_page_anime.clicked.connect(lambda: d_dialog.change_page('anime', 'previous'))
+	d_dialog.n_page_chapter.clicked.connect(lambda: d_dialog.change_page('chapters', 'next'))
+	d_dialog.p_page_chapter.clicked.connect(lambda: d_dialog.change_page('chapters', 'previous'))
 	d_dialog.loadChaptersBtn.clicked.connect(d_dialog.load_chapters)
 	d_dialog.dl_btn.clicked.connect(d_dialog.download_sub)
 

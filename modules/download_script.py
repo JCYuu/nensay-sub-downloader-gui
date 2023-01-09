@@ -8,6 +8,7 @@ import webbrowser
 prev_anime = prev_chapter = next_anime = next_chapter = False
 
 
+
 class Chapter:
     def __init__(self, title, link):
         self.title = title
