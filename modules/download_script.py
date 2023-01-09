@@ -43,9 +43,11 @@ def reload_filter(soup):
         query_list.append(title)
     previous = soup.find(name='a', text='Anterior')
     nxt = soup.find(name='a', text='Siguiente')
-    if previous is not None: prev_anime = True
-    if nxt is not None: next_anime = True
+    prev_anime = True if previous is not None else False
+    next_anime = True if nxt is not None else False
     print(query_list)
+    print(prev_anime)
+    print(next_anime)
     return query_list
 
 
@@ -66,8 +68,10 @@ def reload_chapters(soup):
             title = dl = ''
     previous = soup.find(name='a', text='Anterior')
     nxt = soup.find(name='a', text='Siguiente')
-    if previous is not None: prev_chapter = True
-    if nxt is not None: next_chapter = True
+    prev_chapter = True if previous is not None else False
+    next_chapter = True if nxt is not None else False
+    print(prev_chapter)
+    print(next_chapter)
     return ch_list
 
 

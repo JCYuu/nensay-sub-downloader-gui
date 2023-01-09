@@ -152,10 +152,10 @@ class Ui_Download_Dialog(QDialog):
                     new_page = soup.find(name='a', text='Anterior').get('href')
             with client.get(new_page) as response:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                previous = soup.find(name='a', text='Anterior')
-                nxt = soup.find(name='a', text='Siguiente')
-                download_script.prev_anime = True if previous is not None else False
-                download_script.next_anime = True if nxt is not None else False
+                # previous = soup.find(name='a', text='Anterior')
+                # nxt = soup.find(name='a', text='Siguiente')
+                # download_script.prev_anime = True if previous is not None else False
+                # download_script.next_anime = True if nxt is not None else False
                 search_query = download_script.reload_filter(soup)
                 self.__set_list_model('anime')
         else:
@@ -170,10 +170,10 @@ class Ui_Download_Dialog(QDialog):
                     new_page = soup.find(name='a', text='Anterior').get('href')
             with client.get(new_page) as response:
                 soup = BeautifulSoup(response.text, 'html.parser')
-                previous = soup.find(name='a', text='Anterior')
-                nxt = soup.find(name='a', text='Siguiente')
-                download_script.prev_chapter = True if previous is not None else False
-                download_script.next_chapter = True if nxt is not None else False
+                # previous = soup.find(name='a', text='Anterior')
+                # nxt = soup.find(name='a', text='Siguiente')
+                # download_script.prev_chapter = True if previous is not None else False
+                # download_script.next_chapter = True if nxt is not None else False
                 chapters = download_script.reload_chapters(soup)
                 self.__set_list_model('chapters')
 
