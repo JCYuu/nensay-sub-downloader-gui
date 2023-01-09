@@ -1,2 +1,2 @@
-# nensay-sub-downloader
-Simple script for downloading subs from nensay
+# nensay-sub-downloader-gui
+Very novice PyQT gui for downloading subs from nensay
