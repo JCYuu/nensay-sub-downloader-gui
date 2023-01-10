@@ -5,6 +5,9 @@ prev_anime = prev_chapter = next_anime = next_chapter = False
 
 
 class Chapter:
+    """
+    A basic chapter consisting of its title and its accesible download link
+    """
     def __init__(self, title, link):
         self.title = title
         self.link = link
@@ -17,6 +20,12 @@ class CustomException(Exception):
 
 
 def login(session):
+    """
+    Logs in https://nensaysubs.net bypassing the number check
+
+    :param session: A python requests session
+    :return:
+    """
     print('Login in...')
     response = session.get("http://nensaysubs.net/")
     #print(response.text)
@@ -29,6 +38,12 @@ def login(session):
 
 
 def reload_filter(soup):
+    """
+    Walks through html tags and returns a list containing each found anime's title
+
+    :param soup: A BeautifulSoup object for traversing html
+    :return: query_list: A list cointaining found anime titles
+    """
     query_list = []
     global prev_anime, next_anime
     children = soup.find_all(name='td', attrs={'valign': 'top'})
@@ -47,6 +62,12 @@ def reload_filter(soup):
 
 
 def reload_chapters(soup):
+    """
+    Walks through an anime page html tags and returns a list containing its chapters
+
+    :param soup:
+    :return: ch_list: a Chapter(title, link) list
+    """
     ch_list = []
     title = ''
     dl = ''
@@ -73,6 +94,13 @@ def reload_chapters(soup):
 
 
 def search(session, query):
+    """
+    Searchs for anime results using the input query and returns a list with its results
+
+    :param session: python requests session
+    :param query: name to search
+    :return: query_list: list with anime names found as a result
+    """
     if not query:
         raise CustomException("Don't leave search field blank")
     with session.post(f"http://nensaysubs.net/buscador/?query={query.replace(' ', '+')}") as response:
@@ -87,6 +115,13 @@ def search(session, query):
 
 
 def get_chapters(session, chosen):
+    """
+    Gets all the current page chapters for a specific anime
+
+    :param session: python requests session
+    :param chosen: anime name to retrieve chapters
+    :return: ch_list: list containing anime chapters in Chapter(title, link) format
+    """
     ch_list = []
     with session.post(f"http://nensaysubs.net/sub/{chosen.replace(' ', '_')}") as response:
         soup = BeautifulSoup(response.text, 'html.parser')

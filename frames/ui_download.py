@@ -38,7 +38,7 @@ class Ui_Download_Dialog(QDialog):
         font.setPointSize(11)
         self.exit_btn.setFont(font)
         self.exit_btn.setObjectName("exit_btn")
-        self.plainTextEdit = QtWidgets.QPlainTextEdit(Download_Dialog)
+        self.plainTextEdit = QtWidgets.QLineEdit(Download_Dialog)
         self.plainTextEdit.setGeometry(QtCore.QRect(290, 20, 391, 31))
         self.plainTextEdit.setObjectName("plainTextEdit")
         self.chapters_label = QtWidgets.QLabel(Download_Dialog)
@@ -139,45 +139,58 @@ class Ui_Download_Dialog(QDialog):
         self.n_page_chapter.setText(_translate("Download_Dialog", "Next page"))
 
     def change_page(self, listType, direction):
+        """
+        Changes desired QtlistView to another page if available
+
+        :param listType: 'anime' for Anime names list, 'chapters' for chapters names list
+        :param direction: 'previous' loads previous page from chosen list, 'next' loads next page from chosen list
+
+        """
         global search_query, chapters, current_anime_page, current_ch_page
-        if listType == 'anime':
-            url = f"http://nensaysubs.net/buscador/?query={search_text.replace(' ', '+')}&pn={current_anime_page}"
-            with client.post(url) as response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                if direction == 'next':
-                    current_anime_page += 1
-                    new_page = soup.find(name='a', text='Siguiente').get('href')
-                elif direction == 'previous':
-                    current_anime_page -= 1
-                    new_page = soup.find(name='a', text='Anterior').get('href')
-            with client.get(new_page) as response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # previous = soup.find(name='a', text='Anterior')
-                # nxt = soup.find(name='a', text='Siguiente')
-                # download_script.prev_anime = True if previous is not None else False
-                # download_script.next_anime = True if nxt is not None else False
-                search_query = download_script.reload_filter(soup)
-                self.__set_list_model('anime')
-        else:
-            url = f"http://nensaysubs.net/sub/{chosen_anime.replace(' ', '_')}&pn={current_ch_page}"
-            with client.post(url) as response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                if direction == 'next':
-                    current_ch_page += 1
-                    new_page = soup.find(name='a', text='Siguiente').get('href')
-                elif direction == 'previous':
-                    current_ch_page -= 1
-                    new_page = soup.find(name='a', text='Anterior').get('href')
-            with client.get(new_page) as response:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                # previous = soup.find(name='a', text='Anterior')
-                # nxt = soup.find(name='a', text='Siguiente')
-                # download_script.prev_chapter = True if previous is not None else False
-                # download_script.next_chapter = True if nxt is not None else False
-                chapters = download_script.reload_chapters(soup)
-                self.__set_list_model('chapters')
+        try:
+            if listType == 'anime':
+                url = f"http://nensaysubs.net/buscador/?query={search_text.replace(' ', '+')}&pn={current_anime_page}"
+                with client.post(url) as response:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    if direction == 'next':
+                        current_anime_page += 1
+                        new_page = soup.find(name='a', text='Siguiente').get('href')
+                    elif direction == 'previous':
+                        current_anime_page -= 1
+                        new_page = soup.find(name='a', text='Anterior').get('href')
+                with client.get(new_page) as response:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    search_query = download_script.reload_filter(soup)
+                    self.__set_list_model('anime')
+            else:
+                url = f"http://nensaysubs.net/sub/{chosen_anime.replace(' ', '_')}&pn={current_ch_page}"
+                with client.post(url) as response:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    if direction == 'next':
+                        current_ch_page += 1
+                        new_page = soup.find(name='a', text='Siguiente').get('href')
+                    elif direction == 'previous':
+                        current_ch_page -= 1
+                        new_page = soup.find(name='a', text='Anterior').get('href')
+                with client.get(new_page) as response:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    chapters = download_script.reload_chapters(soup)
+                    self.__set_list_model('chapters')
+        except ConnectionError:
+            message = QtWidgets.QMessageBox()
+            message.setText('There has been a connection error')
+            message.setWindowTitle('Error')
+            message.setIcon(QtWidgets.QMessageBox.Critical)
+            message.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            message.exec_()
 
     def __set_list_model(self, listType):
+        """
+        Sets a model for one of the two QtListViews
+
+        :param listType: 'anime' for Anime names list, 'chapters' for chapters names list
+
+        """
         if listType == 'anime':
             list = search_query
             listView = self.query_list
@@ -201,13 +214,17 @@ class Ui_Download_Dialog(QDialog):
         next_btn.setEnabled(True) if next_flag else next_btn.setDisabled(True)
 
     def search_anime(self):
+        """
+        Searchs for input anime in the web using search func from download_script and fills the list with its reults
+
+        """
         global search_text, search_query, client, current_anime_page
         current_anime_page = 1
         try:
             print("done")
-            print(self.plainTextEdit.toPlainText())
-            search_text = self.plainTextEdit.toPlainText()
-            search_query = download_script.search(client, self.plainTextEdit.toPlainText())
+            print(self.plainTextEdit.text())
+            search_text = self.plainTextEdit.text()
+            search_query = download_script.search(client, search_text)
             print(search_query)
             self.__set_list_model('anime')
         except CustomException as e:
@@ -217,19 +234,43 @@ class Ui_Download_Dialog(QDialog):
             message.setIcon(QtWidgets.QMessageBox.Critical)
             message.setStandardButtons(QtWidgets.QMessageBox.Ok)
             message.exec_()
+        except ConnectionError:
+            message = QtWidgets.QMessageBox()
+            message.setText('There has been a connection error')
+            message.setWindowTitle('Error')
+            message.setIcon(QtWidgets.QMessageBox.Critical)
+            message.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            message.exec_()
+
 
     def load_chapters(self):
+        """
+        Retrieves all chosen anime's chapters for first page using get_chapters func from download_script and fills chapters list
+
+        """
         global chapters, chosen_anime, current_ch_page
-        current_ch_page = 1
-        index = int(self.query_list.currentIndex().row())
-        print(index)
-        chosen_anime = search_query[index]
-        print(chosen_anime)
-        chapters = download_script.get_chapters(client, chosen_anime)
-        self.__set_list_model('chapter')
-        self.dl_btn.setEnabled(True)
+        try:
+            current_ch_page = 1
+            index = int(self.query_list.currentIndex().row())
+            print(index)
+            chosen_anime = search_query[index]
+            print(chosen_anime)
+            chapters = download_script.get_chapters(client, chosen_anime)
+            self.__set_list_model('chapter')
+            self.dl_btn.setEnabled(True)
+        except ConnectionError:
+            message = QtWidgets.QMessageBox()
+            message.setText('There has been a connection error')
+            message.setWindowTitle('Error')
+            message.setIcon(QtWidgets.QMessageBox.Critical)
+            message.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            message.exec_()
 
     def download_sub(self):
+        """
+        Downloads chosen subtitle file in selected location, user must submit correct captcha code to avoid file data corruption
+
+        """
         global chapters, client
         try:
             index = int(self.chapter_list.currentIndex().row())
@@ -241,6 +282,11 @@ class Ui_Download_Dialog(QDialog):
             with client.get(dl_link):
                 with client.get('http://nensaysubs.net/senos/seguro.php') as pic:
                     chunk = pic.content
+                    message = QtWidgets.QMessageBox(parent=self)
+                    message.setText('You will be sent a picture with a code, please save it and type it in the next window')
+                    message.setWindowTitle('Info')
+                    message.setStandardButtons(QtWidgets.QMessageBox.Ok)
+                    message.exec_()
                     with open('photo.png', 'wb') as file:
                         file.write(chunk)
                     webbrowser.open('photo.png')
@@ -265,10 +311,16 @@ class Ui_Download_Dialog(QDialog):
                         message.setStandardButtons(QtWidgets.QMessageBox.Ok)
                         message.show()
                     os.remove('photo.png')
-
+        except ConnectionError:
+            message = QtWidgets.QMessageBox()
+            message.setText('There has been a connection error')
+            message.setWindowTitle('Error')
+            message.setIcon(QtWidgets.QMessageBox.Critical)
+            message.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            message.exec_()
         except:
             message = QtWidgets.QMessageBox()
-            message.setText('Select a file to download')
+            message.setText('We cannot determine the source of the error, try again')
             message.setWindowTitle('Error')
             message.setIcon(QtWidgets.QMessageBox.Critical)
             message.setStandardButtons(QtWidgets.QMessageBox.Ok)
