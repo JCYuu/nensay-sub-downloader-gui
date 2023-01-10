@@ -1,10 +1,5 @@
-import asyncio
-import time
 
-import aiohttp
-from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-import webbrowser
 prev_anime = prev_chapter = next_anime = next_chapter = False
 
 

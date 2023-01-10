@@ -1,11 +1,15 @@
-from zipfile import BadZipFile
+import os
+from pathlib import Path
 
 from PyQt5.QtCore import QCoreApplication, QMetaObject, QRect, QSize, Qt
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QDialogButtonBox, QSizePolicy, QDialog, QCheckBox, \
 	QFileDialog, QMessageBox
+from pyunpack import PatoolError
 
-from modules import ssaToSrt
+from frames.ui_lang import Ui_lang
+from modules.download_script import CustomException
+from modules.ssaToSrt import ssaToSrt
 
 
 class Ui_ToSrtDialog(QDialog):
@@ -45,6 +49,7 @@ class Ui_ToSrtDialog(QDialog):
 		self.browse.setFont(font)
 		self.copyFiles = QCheckBox(ToSrtDialog)
 		self.copyFiles.setObjectName(u"copyFiles")
+		self.copyFiles.setEnabled(False)
 		self.copyFiles.setGeometry(QRect(20, 120, 221, 17))
 		font1 = QFont()
 		font1.setFamily(u"OCR A Extended")
@@ -85,8 +90,13 @@ class Ui_ToSrtDialog(QDialog):
 	# retranslateUi
 
 	def browse_files(self):
-		fileName = QFileDialog.getOpenFileName(self, "Open File", "downloads", "Zip files (*.zip)")
+		fileName = QFileDialog.getOpenFileName(self, "Open File", str(Path.home()/"Downloads"), "Zip files (*.zip)")
 		self.subtitlePath.setText(fileName[0])
+		self.copyFiles.setEnabled(True)
+
+	def save_files(self):
+		fileName = QFileDialog.getExistingDirectory(self, "Select Folder", str(Path.home() / "Downloads"))
+		self.copyPath.setText(fileName)
 
 	def checker(self):
 		if self.copyFiles.isChecked():
@@ -99,18 +109,42 @@ class Ui_ToSrtDialog(QDialog):
 			self.browseCopy.setEnabled(False)
 
 	def accepted(self):
-		if not self.copyPath.isEnabled():
-			box = QMessageBox()
-			box.setIcon(QMessageBox.Critical)
-			box.setStandardButtons(QMessageBox.Ok)
-			box.setWindowTitle("Error")
-			try:
-				ssaToSrt.zip_to_srt(self.subtitlePath.text())
-			except FileNotFoundError:
-				box.setText("That file does not exist")
-				box.exec_()
-			except BadZipFile:
-				box.setText("That file is corrupted")
-				box.exec_()
-		else:
-			pass
+		box = QMessageBox()
+		box.setIcon(QMessageBox.Critical)
+		box.setStandardButtons(QMessageBox.Ok)
+		box.setWindowTitle("Error")
+		srt = ssaToSrt()
+		try:
+			if not self.copyPath.isEnabled():
+				srt.zip_to_srt(self.subtitlePath.text())
+				self.canceled()
+			else:
+				lang = Ui_lang()
+				lang.setupUi(lang)
+				lang.show()
+				if self.subtitlePath.text() and self.copyPath.text():
+					print(self.copyPath.text())
+					if Path(self.copyPath.text()).exists() and Path(self.copyPath.text()).is_file():
+						raise CustomException("That's a file, not a directory")
+					elif not Path(self.copyPath.text()).exists():
+						open(self.copyPath.text())
+						os.remove(self.copyPath.text())
+					srt.zip_to_srt(self.subtitlePath.text())
+					lang.accept.accepted.connect(lambda: lang.selectLang(srt, self.copyPath.text(), self))
+					lang.accept.rejected.connect(lambda: lang.cancelCopy(self))
+					lang.readList(srt)
+				else:
+					raise CustomException("No target directory selected")
+		except FileNotFoundError:
+			box.setText("That file does not exist")
+			box.exec_()
+		except PatoolError:
+			box.setText("That file is corrupted")
+			box.exec_()
+		except CustomException as e:
+			box.setText(e.message)
+			box.exec_()
+
+	def canceled(self):
+		self.subtitlePath.setText("")
+		self.copyPath.setText("")
