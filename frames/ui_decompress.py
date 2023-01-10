@@ -123,12 +123,10 @@ class Ui_ToSrtDialog(QDialog):
 				lang.setupUi(lang)
 				lang.show()
 				if self.subtitlePath.text() and self.copyPath.text():
-					print(self.copyPath.text())
 					if Path(self.copyPath.text()).exists() and Path(self.copyPath.text()).is_file():
 						raise CustomException("That's a file, not a directory")
 					elif not Path(self.copyPath.text()).exists():
-						open(self.copyPath.text())
-						os.remove(self.copyPath.text())
+						os.makedirs(self.copyPath.text())
 					srt.zip_to_srt(self.subtitlePath.text())
 					lang.accept.accepted.connect(lambda: lang.selectLang(srt, self.copyPath.text(), self))
 					lang.accept.rejected.connect(lambda: lang.cancelCopy(self))
@@ -143,6 +141,9 @@ class Ui_ToSrtDialog(QDialog):
 			box.exec_()
 		except CustomException as e:
 			box.setText(e.message)
+			box.exec_()
+		except OSError:
+			box.setText("Could not create folder (check path)")
 			box.exec_()
 
 	def canceled(self):
